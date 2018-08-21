@@ -38,11 +38,46 @@ func (m *Migrate) SetMigrationsCollection(name string) {
 	m.migrationsCollection = name
 }
 
+func (m *Migrate) isCollectionExist(name string) (bool, error) {
+	colls, err := m.db.CollectionNames()
+	if err != nil {
+		return false, err
+	}
+	for _, v := range colls {
+		if name == v {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (m *Migrate) createCollectionIfNotExist(name string) error {
+	exist, err := m.isCollectionExist(name)
+	if err != nil {
+		return err
+	}
+	if exist {
+		return nil
+	}
+	return m.db.Run(struct {
+		Create string `bson:"create"`
+	}{
+		Create: name,
+	}, nil)
+}
+
 // Version returns current database version and comment.
 func (m *Migrate) Version() (uint64, string, error) {
+	if err := m.createCollectionIfNotExist(m.migrationsCollection); err != nil {
+		return 0, "", err
+	}
+
 	var rec versionRecord
 	// find record with greatest id (assuming it`s latest also)
 	err := m.db.C(m.migrationsCollection).Find(nil).Sort("-_id").One(&rec)
+	if err == mgo.ErrNotFound {
+		return 0, "", nil
+	}
 	if err != nil {
 		return 0, "", err
 	}
