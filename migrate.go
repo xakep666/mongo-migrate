@@ -59,6 +59,7 @@ func (m *Migrate) createCollectionIfNotExist(name string) error {
 	if exist {
 		return nil
 	}
+	// I had a problem here with bson.D: mongo returned error like "command not found: '0'"
 	return m.db.Run(struct {
 		Create string `bson:"create"`
 	}{
@@ -118,7 +119,6 @@ func (m *Migrate) Up(n int) error {
 		if err := m.SetVersion(migration.Version, migration.Description); err != nil {
 			return err
 		}
-
 	}
 	return nil
 }
@@ -135,8 +135,9 @@ func (m *Migrate) Down(n int) error {
 
 	currentVersionIndex := len(m.migrations) - 1
 	for i := len(m.migrations) - 1; i >= 0; i-- {
-		currentVersionIndex = i
-		if m.migrations[i].Version < currentVersion {
+		if m.migrations[i].Version >= currentVersion {
+			currentVersionIndex = i
+		} else {
 			break
 		}
 	}
@@ -145,7 +146,7 @@ func (m *Migrate) Down(n int) error {
 		n = currentVersionIndex
 	}
 
-	for i := n; i >= 0; i-- {
+	for i := currentVersionIndex; i >= currentVersionIndex-n; i-- {
 		migration := m.migrations[i]
 		if migration.Down == nil {
 			continue
@@ -153,7 +154,14 @@ func (m *Migrate) Down(n int) error {
 		if err := migration.Down(m.db); err != nil {
 			return err
 		}
-		if err := m.SetVersion(migration.Version, migration.Description); err != nil {
+
+		var prevMigrationVersion uint64
+		if i == 0 {
+			prevMigrationVersion = 0
+		} else {
+			prevMigrationVersion = m.migrations[i-1].Version
+		}
+		if err := m.SetVersion(prevMigrationVersion, migration.Description); err != nil {
 			return err
 		}
 	}
