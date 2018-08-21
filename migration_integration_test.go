@@ -64,4 +64,18 @@ func TestSetGetVersion(t *testing.T) {
 		t.Errorf("Unexpected version/description %v %v", version, description)
 		return
 	}
+
+	if err := migrate.SetVersion(1, "hello"); err != nil {
+		t.Errorf("Unexpected error: %v", err)
+		return
+	}
+	version, description, err = migrate.Version()
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+		return
+	}
+	if version != 1 || description != "hello" {
+		t.Errorf("Unexpected version/description %v %v", version, description)
+		return
+	}
 }
