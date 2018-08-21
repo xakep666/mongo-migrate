@@ -33,7 +33,7 @@ func (m *Migrate) SetMigrationsCollection(name string) {
 func (m *Migrate) Version() (uint64, string, error) {
 	var rec versionRecord
 	// find record with greatest id (assuming it`s latest also)
-	err := m.db.C(m.migrationsCollection).Find(nil).Sort("-id").One(&rec)
+	err := m.db.C(m.migrationsCollection).Find(nil).Sort("-_id").One(&rec)
 	if err != nil {
 		return 0, "", err
 	}
