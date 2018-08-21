@@ -1,4 +1,4 @@
-package mongo_migrate
+package migrate
 
 import (
 	"fmt"

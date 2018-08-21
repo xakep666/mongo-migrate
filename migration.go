@@ -1,4 +1,4 @@
-package mongo_migrate
+package migrate
 
 import (
 	"sort"
@@ -8,6 +8,16 @@ import (
 
 type MigrationFunc func(db *mgo.Database) error
 
+// Migrate represents single database migration.
+// Migration contains:
+//
+// - version: migration version, must be unique in migration list
+//
+// - description: text description of migration
+//
+// - up: callback which will be called in "up" migration process
+//
+// - down: callback which will be called in "down" migration process for reverting changes
 type Migration struct {
 	Version     uint64
 	Description string

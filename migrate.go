@@ -1,4 +1,5 @@
-package mongo_migrate
+// Package migrate allows to perform versioned migrations in your MongoDB.
+package migrate
 
 import (
 	"time"
@@ -12,6 +13,11 @@ type versionRecord struct {
 	Timestamp   time.Time
 }
 
+// Migrate is type for performing migrations in provided database.
+// Database versioned using dedicated collection.
+// Each migration applying ("up" and "down") adds new document to collection.
+// This document consists migration version, migration description and timestamp.
+// Current database version determined as version in latest added document (biggest "_id") from collection mentioned above.
 type Migrate struct {
 	db                   *mgo.Database
 	migrations           []Migration
@@ -26,10 +32,13 @@ func NewMigrate(db *mgo.Database, migrations ...Migration) *Migrate {
 	}
 }
 
+// SetMigrationsCollection replaces name of collection for storing migration information.
+// By default it is "migrations".
 func (m *Migrate) SetMigrationsCollection(name string) {
 	m.migrationsCollection = name
 }
 
+// Version returns current database version and comment.
 func (m *Migrate) Version() (uint64, string, error) {
 	var rec versionRecord
 	// find record with greatest id (assuming it`s latest also)
@@ -40,6 +49,7 @@ func (m *Migrate) Version() (uint64, string, error) {
 	return rec.Version, rec.Description, nil
 }
 
+// SetVersion forcibly changes database version to provided.
 func (m *Migrate) SetVersion(version uint64, description string) error {
 	return m.db.C(m.migrationsCollection).Insert(versionRecord{
 		Version:     version,
@@ -48,6 +58,9 @@ func (m *Migrate) SetVersion(version uint64, description string) error {
 	})
 }
 
+// Up performs "up" migrations to latest available version.
+// If n<=0 all "up" migrations with newer versions will be performed.
+// If n>0 only n migrations with newer version will be performed.
 func (m *Migrate) Up(n int) error {
 	currentVersion, _, err := m.Version()
 	if err != nil {
@@ -58,11 +71,12 @@ func (m *Migrate) Up(n int) error {
 	}
 	migrationSort(m.migrations)
 
-	for i := 0; i < n; i++ {
+	for i, p := 0, 0; i < len(m.migrations) && p < n; i++ {
 		migration := m.migrations[i]
 		if migration.Version <= currentVersion || migration.Up == nil {
 			continue
 		}
+		p++
 		if err := migration.Up(m.db); err != nil {
 			return err
 		}
@@ -74,6 +88,9 @@ func (m *Migrate) Up(n int) error {
 	return nil
 }
 
+// Down performs "down" migration to oldest available version.
+// If n<=0 all "down" migrations with older version will be performed.
+// If n>0 only n migrations with older version will be performed.
 func (m *Migrate) Down(n int) error {
 	currentVersion, _, err := m.Version()
 	if err != nil {
