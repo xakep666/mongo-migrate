@@ -24,7 +24,7 @@ func extractVersionDescription(name string) (uint64, string, error) {
 		return 0, "", err
 	}
 
-	description := base[idx : len(base)-len(".go")-1]
+	description := base[idx+1 : len(base)-len(".go")]
 
 	return version, description, nil
 }
