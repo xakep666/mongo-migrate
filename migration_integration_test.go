@@ -16,7 +16,11 @@ import (
 const testCollection = "test"
 
 func cleanup(db *mgo.Database) {
-	for _, collection := range []string{testCollection, defaultMigrationsCollection} {
+	collections, err := db.CollectionNames()
+	if err != nil {
+		panic(err)
+	}
+	for _, collection := range collections {
 		db.C(collection).DropAllIndexes()
 		db.C(collection).DropCollection()
 	}
