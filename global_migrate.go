@@ -7,7 +7,7 @@ import (
 	"github.com/globalsign/mgo"
 )
 
-var globalMigrate = Migrate{}
+var globalMigrate = NewMigrate(nil)
 
 func internalRegister(up, down MigrationFunc, skip int) error {
 	_, file, _, _ := runtime.Caller(skip)
