@@ -13,6 +13,8 @@ type versionRecord struct {
 	Timestamp   time.Time
 }
 
+const defaultMigrationsCollection = "migrations"
+
 // Migrate is type for performing migrations in provided database.
 // Database versioned using dedicated collection.
 // Each migration applying ("up" and "down") adds new document to collection.
@@ -25,10 +27,12 @@ type Migrate struct {
 }
 
 func NewMigrate(db *mgo.Database, migrations ...Migration) *Migrate {
+	internalMigrations := make([]Migration, len(migrations))
+	copy(internalMigrations, migrations)
 	return &Migrate{
 		db:                   db,
-		migrations:           migrations,
-		migrationsCollection: "migrations",
+		migrations:           internalMigrations,
+		migrationsCollection: defaultMigrationsCollection,
 	}
 }
 
@@ -131,37 +135,28 @@ func (m *Migrate) Down(n int) error {
 	if err != nil {
 		return err
 	}
+	if n <= 0 || n > len(m.migrations) {
+		n = len(m.migrations)
+	}
 	migrationSort(m.migrations)
 
-	currentVersionIndex := len(m.migrations) - 1
-	for i := len(m.migrations) - 1; i >= 0; i-- {
-		if m.migrations[i].Version >= currentVersion {
-			currentVersionIndex = i
-		} else {
-			break
-		}
-	}
-
-	if n < 0 || n > currentVersionIndex {
-		n = currentVersionIndex
-	}
-
-	for i := currentVersionIndex; i >= currentVersionIndex-n; i-- {
+	for i, p := len(m.migrations)-1, 0; i >= 0 && p < n; i-- {
 		migration := m.migrations[i]
-		if migration.Down == nil {
+		if migration.Version > currentVersion || migration.Down == nil {
 			continue
 		}
+		p++
 		if err := migration.Down(m.db); err != nil {
 			return err
 		}
 
-		var prevMigrationVersion uint64
+		var prevMigration Migration
 		if i == 0 {
-			prevMigrationVersion = 0
+			prevMigration = Migration{Version: 0}
 		} else {
-			prevMigrationVersion = m.migrations[i-1].Version
+			prevMigration = m.migrations[i-1]
 		}
-		if err := m.SetVersion(prevMigrationVersion, migration.Description); err != nil {
+		if err := m.SetVersion(prevMigration.Version, prevMigration.Description); err != nil {
 			return err
 		}
 	}
