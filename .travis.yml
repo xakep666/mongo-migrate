@@ -15,7 +15,7 @@ before_script:
 - mongo mydb_test --eval 'db.createUser({user:"travis",pwd:"test",roles:["readWrite"]});'
 
 script:
-- go test -race -coverprofile=coverage.txt -covermode=atomic -tags=integration ./...
+- go test -v -race -coverprofile=coverage.txt -covermode=atomic -tags=integration ./...
 
 after_success:
 - bash <(curl -s https://codecov.io/bash)
