@@ -9,6 +9,18 @@ This package allows to perform versioned migrations on your MongoDB using [mgo d
 It depends only on standard library and mgo driver.
 Inspired by [go-pg migrations](https://github.com/go-pg/migrations).
 
+Table of Contents
+=================
+
+* [Versioned migrations for MongoDB](#versioned-migrations-for-mongodb)
+  * [Prerequisites](#prerequisites)
+  * [Installation](#installation)
+  * [Usage](#usage)
+    * [Use case \#1\. Migrations in files\.](#use-case-1-migrations-in-files)
+    * [Use case \#2\. Migrations in application code\.](#use-case-2-migrations-in-application-code)
+  * [How it works?](#how-it-works)
+* [License](#license)
+
 ## Prerequisites
 * Golang >= 1.10 or Vgo
 
