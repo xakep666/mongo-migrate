@@ -12,13 +12,12 @@ Inspired by [go-pg migrations](https://github.com/go-pg/migrations).
 Table of Contents
 =================
 
-* [Versioned migrations for MongoDB](#versioned-migrations-for-mongodb)
-  * [Prerequisites](#prerequisites)
-  * [Installation](#installation)
-  * [Usage](#usage)
-    * [Use case \#1\. Migrations in files\.](#use-case-1-migrations-in-files)
-    * [Use case \#2\. Migrations in application code\.](#use-case-2-migrations-in-application-code)
-  * [How it works?](#how-it-works)
+* [Prerequisites](#prerequisites)
+* [Installation](#installation)
+* [Usage](#usage)
+  * [Use case \#1\. Migrations in files\.](#use-case-1-migrations-in-files)
+  * [Use case \#2\. Migrations in application code\.](#use-case-2-migrations-in-application-code)
+* [How it works?](#how-it-works)
 * [License](#license)
 
 ## Prerequisites
@@ -75,7 +74,7 @@ func MongoConnect(host, user, password, database string) (*mgo.Database, error) 
         Password: password,
     })
     if err != nil {
-        return err
+        return nil, err
     }
     db := session.DB("")
     migrate.SetDatabase(db)
@@ -97,14 +96,14 @@ func MongoConnect(host, user, password, database string) (*mgo.Database, error) 
         Password: password,
     })
     if err != nil {
-        return err
+        return nil, err
     }
     db := session.DB("")
     m := migrate.NewMigrate(db, migrate.Migration{
         Version: 1,
         Description: "add my-index",
         Up: func(db *mgo.Database) error {
-            return db.C("my-coll").Insert(EnsureIndex(mgo.Index{Name: "my-index", Key: []string{"my-key"}}))
+            return db.C("my-coll").EnsureIndex(mgo.Index{Name: "my-index", Key: []string{"my-key"}})
         },
         Down: func(db *mgo.Database) error {
             return db.C("my-coll").DropIndexName("my-index")
@@ -133,5 +132,5 @@ Current database version determined as version from latest inserted document.
 You can change collection name using `SetMigrationsCollection` methods.
 Remember that if you want to use custom collection name you need to set it before running migrations.
 
-# License
+## License
 mongo-migrate project is licensed under the terms of the MIT license. Please see LICENSE in this repository for more details.
