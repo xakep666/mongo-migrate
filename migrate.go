@@ -15,6 +15,9 @@ type versionRecord struct {
 
 const defaultMigrationsCollection = "migrations"
 
+// AllAvailable used in "Up" or "Down" methods to run all available migrations.
+const AllAvailable = -1
+
 // Migrate is type for performing migrations in provided database.
 // Database versioned using dedicated collection.
 // Each migration applying ("up" and "down") adds new document to collection.

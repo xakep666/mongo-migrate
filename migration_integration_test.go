@@ -110,7 +110,7 @@ func TestUpMigrations(t *testing.T) {
 			return db.C(testCollection).EnsureIndex(mgo.Index{Name: "test_idx", Key: []string{"hello"}})
 		}},
 	)
-	if err := migrate.Up(-1); err != nil {
+	if err := migrate.Up(AllAvailable); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
@@ -159,11 +159,11 @@ func TestDownMigrations(t *testing.T) {
 			return db.C(testCollection).DropIndexName("test_idx")
 		}},
 	)
-	if err := migrate.Up(-1); err != nil {
+	if err := migrate.Up(AllAvailable); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
-	if err := migrate.Down(-1); err != nil {
+	if err := migrate.Down(AllAvailable); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
@@ -267,7 +267,7 @@ func TestPartialDownMigrations(t *testing.T) {
 			return db.C(testCollection).Remove(bson.M{"a": "b"})
 		}},
 	)
-	if err := migrate.Up(-1); err != nil {
+	if err := migrate.Up(AllAvailable); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
@@ -304,7 +304,7 @@ func TestUpMigrationWithErrors(t *testing.T) {
 			return expectedErr
 		}},
 	)
-	if err := migrate.Up(-1); err != expectedErr {
+	if err := migrate.Up(AllAvailable); err != expectedErr {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
@@ -329,11 +329,11 @@ func TestDownMigrationWithErrors(t *testing.T) {
 			return expectedErr
 		}},
 	)
-	if err := migrate.Up(-1); err != nil {
+	if err := migrate.Up(AllAvailable); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
-	if err := migrate.Down(-1); err != expectedErr {
+	if err := migrate.Down(AllAvailable); err != expectedErr {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
@@ -361,11 +361,11 @@ func TestMultipleUpMigration(t *testing.T) {
 			return nil
 		}},
 	)
-	if err := migrate.Up(-1); err != nil {
+	if err := migrate.Up(AllAvailable); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
-	if err := migrate.Up(-1); err != nil {
+	if err := migrate.Up(AllAvailable); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
@@ -401,15 +401,15 @@ func TestMultipleDownMigration(t *testing.T) {
 			return nil
 		}},
 	)
-	if err := migrate.Up(-1); err != nil {
+	if err := migrate.Up(AllAvailable); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
-	if err := migrate.Down(-1); err != nil {
+	if err := migrate.Down(AllAvailable); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
-	if err := migrate.Down(-1); err != nil {
+	if err := migrate.Down(AllAvailable); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
