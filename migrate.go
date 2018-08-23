@@ -9,7 +9,7 @@ import (
 
 type versionRecord struct {
 	Version     uint64
-	Description string
+	Description string `bson:",omitempty"`
 	Timestamp   time.Time
 }
 
