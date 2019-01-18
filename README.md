@@ -47,7 +47,7 @@ import (
 
 func init() {
 	migrate.Register(func(db *mgo.Database) error {
-		return db.C("my-coll").Insert(EnsureIndex(mgo.Index{Name: "my-index", Key: []string{"my-key"}}))
+		return db.C("my-coll").EnsureIndex(mgo.Index{Name: "my-index", Key: []string{"my-key"}})
 	}, func(db *mgo.Database) error {
 		return db.C("my-coll").DropIndexName("my-index")
 	})
