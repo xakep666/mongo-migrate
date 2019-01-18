@@ -2,6 +2,7 @@
 package migrate
 
 import (
+	"log"
 	"time"
 
 	"github.com/globalsign/mgo"
@@ -27,6 +28,7 @@ type Migrate struct {
 	db                   *mgo.Database
 	migrations           []Migration
 	migrationsCollection string
+	logger               *log.Logger
 }
 
 func NewMigrate(db *mgo.Database, migrations ...Migration) *Migrate {
@@ -43,6 +45,11 @@ func NewMigrate(db *mgo.Database, migrations ...Migration) *Migrate {
 // By default it is "migrations".
 func (m *Migrate) SetMigrationsCollection(name string) {
 	m.migrationsCollection = name
+}
+
+// SetLogger set a logger
+func (m *Migrate) SetLogger(l *log.Logger) {
+	m.logger = l
 }
 
 func (m *Migrate) isCollectionExist(name string) (bool, error) {
@@ -123,6 +130,9 @@ func (m *Migrate) Up(n int) error {
 		if err := migration.Up(m.db); err != nil {
 			return err
 		}
+		if m.logger != nil {
+			m.logger.Printf("MIGRATED UP: %d %s\n", migration.Version, migration.Description)
+		}
 		if err := m.SetVersion(migration.Version, migration.Description); err != nil {
 			return err
 		}
@@ -158,6 +168,9 @@ func (m *Migrate) Down(n int) error {
 			prevMigration = Migration{Version: 0}
 		} else {
 			prevMigration = m.migrations[i-1]
+		}
+		if m.logger != nil {
+			m.logger.Printf("MIGRATED DOWN: %d %s\n", migration.Version, migration.Description)
 		}
 		if err := m.SetVersion(prevMigration.Version, prevMigration.Description); err != nil {
 			return err
