@@ -9,6 +9,7 @@ import (
 func TestGlobalMigrateUp(t *testing.T) {
 	defer cleanup(mongo)
 	SetDatabase(mongo)
+	SetLogger(nil)
 
 	if err := Up(-1); err != nil {
 		t.Errorf("Unexpected error: %v", err)
@@ -28,6 +29,7 @@ func TestGlobalMigrateUp(t *testing.T) {
 func TestGlobalMigrateDown(t *testing.T) {
 	defer cleanup(mongo)
 	SetDatabase(mongo)
+	SetLogger(nil)
 
 	if err := Up(-1); err != nil {
 		t.Errorf("Unexpected error: %v", err)
