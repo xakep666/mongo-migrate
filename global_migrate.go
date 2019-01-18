@@ -2,6 +2,7 @@ package migrate
 
 import (
 	"fmt"
+	"log"
 	"runtime"
 
 	"github.com/globalsign/mgo"
@@ -73,6 +74,11 @@ func SetDatabase(db *mgo.Database) {
 // SetMigrationsCollection changes default collection name for migrations history.
 func SetMigrationsCollection(name string) {
 	globalMigrate.SetMigrationsCollection(name)
+}
+
+// SetLogger set a logger
+func SetLogger(l *log.Logger) {
+	globalMigrate.SetLogger(l)
 }
 
 // Version returns current database version.
