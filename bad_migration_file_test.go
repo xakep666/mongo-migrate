@@ -1,9 +1,8 @@
 package migrate
 
 import (
+	"go.mongodb.org/mongo-driver/mongo"
 	"testing"
-
-	"github.com/globalsign/mgo"
 )
 
 func TestBadMigrationFile(t *testing.T) {
@@ -13,9 +12,9 @@ func TestBadMigrationFile(t *testing.T) {
 	}()
 	globalMigrate = NewMigrate(nil)
 
-	err := Register(func(db *mgo.Database) error {
+	err := Register(func(db *mongo.Database) error {
 		return nil
-	}, func(db *mgo.Database) error {
+	}, func(db *mongo.Database) error {
 		return nil
 	})
 	if err == nil {
@@ -32,9 +31,9 @@ func TestBadMigrationFilePanic(t *testing.T) {
 		}
 	}()
 	globalMigrate = NewMigrate(nil)
-	MustRegister(func(db *mgo.Database) error {
+	MustRegister(func(db *mongo.Database) error {
 		return nil
-	}, func(db *mgo.Database) error {
+	}, func(db *mongo.Database) error {
 		return nil
 	})
 }

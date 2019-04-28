@@ -3,16 +3,19 @@
 package migrate
 
 import (
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
+	"context"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const globalTestCollection = "test-global"
 
 func init() {
-	Register(func(db *mgo.Database) error {
-		return db.C(globalTestCollection).Insert(bson.M{"a": "b"})
-	}, func(db *mgo.Database) error {
-		return db.C(globalTestCollection).Remove(bson.M{"a": "b"})
+	_ = Register(func(db *mongo.Database) error {
+		_, err := db.Collection(globalTestCollection).InsertOne(context.Background(), bson.M{"a": "b"})
+		return err
+	}, func(db *mongo.Database) error {
+		_, err := db.Collection(globalTestCollection).DeleteOne(context.Background(), bson.M{"a": "b"})
+		return err
 	})
 }

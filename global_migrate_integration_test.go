@@ -7,8 +7,8 @@ import (
 )
 
 func TestGlobalMigrateUp(t *testing.T) {
-	defer cleanup(mongo)
-	SetDatabase(mongo)
+	defer cleanup(mongoDB)
+	SetDatabase(mongoDB)
 	SetLogger(nil)
 
 	if err := Up(-1); err != nil {
@@ -27,8 +27,8 @@ func TestGlobalMigrateUp(t *testing.T) {
 }
 
 func TestGlobalMigrateDown(t *testing.T) {
-	defer cleanup(mongo)
-	SetDatabase(mongo)
+	defer cleanup(mongoDB)
+	SetDatabase(mongoDB)
 	SetLogger(nil)
 
 	if err := Up(-1); err != nil {

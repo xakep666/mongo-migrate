@@ -3,15 +3,27 @@
 package migrate
 
 import (
-	"github.com/globalsign/mgo"
+	"context"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/x/bsonx"
 )
 
 const globalTestIndexName = "test_idx_2"
 
 func init() {
-	Register(func(db *mgo.Database) error {
-		return db.C(globalTestCollection).EnsureIndex(mgo.Index{Name: globalTestIndexName, Key: []string{"a"}})
-	}, func(db *mgo.Database) error {
-		return db.C(globalTestCollection).DropIndexName(globalTestIndexName)
+	_ = Register(func(db *mongo.Database) error {
+		coll := db.Collection(globalTestCollection)
+		indexView := coll.Indexes()
+		_, err := indexView.CreateOne(context.Background(), mongo.IndexModel{
+			Keys: bsonx.Doc{{"a", bsonx.String(globalTestIndexName)}},
+		})
+
+		return err
+
+	}, func(db *mongo.Database) error {
+		coll := db.Collection(globalTestCollection)
+		indexView := coll.Indexes()
+		_, err := indexView.DropOne(context.Background(), globalTestIndexName)
+		return err
 	})
 }

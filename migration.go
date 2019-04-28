@@ -3,10 +3,10 @@ package migrate
 import (
 	"sort"
 
-	"github.com/globalsign/mgo"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type MigrationFunc func(db *mgo.Database) error
+type MigrationFunc func(db *mongo.Database) error
 
 // Migrate represents single database migration.
 // Migration contains:

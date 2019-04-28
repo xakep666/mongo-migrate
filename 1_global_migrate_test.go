@@ -1,9 +1,8 @@
 package migrate
 
 import (
+	"go.mongodb.org/mongo-driver/mongo"
 	"testing"
-
-	"github.com/globalsign/mgo"
 )
 
 func TestGlobalMigrateSetGet(t *testing.T) {
@@ -11,13 +10,13 @@ func TestGlobalMigrateSetGet(t *testing.T) {
 	defer func() {
 		globalMigrate = oldMigrate
 	}()
-	db := &mgo.Database{}
+	db := &mongo.Database{}
 	globalMigrate = NewMigrate(db)
 
 	if globalMigrate.db != db {
 		t.Errorf("Unexpected non-equal dbs")
 	}
-	db2 := &mgo.Database{}
+	db2 := &mongo.Database{}
 	SetDatabase(db2)
 	if globalMigrate.db != db2 {
 		t.Errorf("Unexpected non-equal dbs")
@@ -35,9 +34,9 @@ func TestMigrationsRegistration(t *testing.T) {
 	}()
 	globalMigrate = NewMigrate(nil)
 
-	err := Register(func(db *mgo.Database) error {
+	err := Register(func(db *mongo.Database) error {
 		return nil
-	}, func(db *mgo.Database) error {
+	}, func(db *mongo.Database) error {
 		return nil
 	})
 	if err != nil {
@@ -53,9 +52,9 @@ func TestMigrationsRegistration(t *testing.T) {
 		t.Errorf("Unexpected version/description: %d %s", registered[0].Version, registered[0].Description)
 	}
 
-	err = Register(func(db *mgo.Database) error {
+	err = Register(func(db *mongo.Database) error {
 		return nil
-	}, func(db *mgo.Database) error {
+	}, func(db *mongo.Database) error {
 		return nil
 	})
 	if err == nil {
@@ -72,9 +71,9 @@ func TestMigrationMustRegistration(t *testing.T) {
 		}
 	}()
 	globalMigrate = NewMigrate(nil)
-	MustRegister(func(db *mgo.Database) error {
+	MustRegister(func(db *mongo.Database) error {
 		return nil
-	}, func(db *mgo.Database) error {
+	}, func(db *mongo.Database) error {
 		return nil
 	})
 	registered := RegisteredMigrations()

@@ -5,7 +5,7 @@ import (
 	"log"
 	"runtime"
 
-	"github.com/globalsign/mgo"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var globalMigrate = NewMigrate(nil)
@@ -67,7 +67,7 @@ func RegisteredMigrations() []Migration {
 }
 
 // SetDatabase sets database for global migrate.
-func SetDatabase(db *mgo.Database) {
+func SetDatabase(db *mongo.Database) {
 	globalMigrate.db = db
 }
 

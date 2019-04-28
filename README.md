@@ -40,17 +40,26 @@ File name should be like `<version>_<description>.go`.
 package migrations
 
 import (
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/bson"
 	migrate "github.com/xakep666/mongo-migrate"
 )
 
 func init() {
-	migrate.Register(func(db *mgo.Database) error {
-		return db.C("my-coll").EnsureIndex(mgo.Index{Name: "my-index", Key: []string{"my-key"}})
-	}, func(db *mgo.Database) error {
-		return db.C("my-coll").DropIndexName("my-index")
-	})
+	migrate.Register(func(db *mongo.Database) error { //Up
+    		_, err := db.Collection("user").UpdateOne(
+    			context.Background(),
+    			bson.M{"email": "admin@codenation.com.br"},
+    			bson.M{"$set": bson.M{"name": "Code:Nation Admin User"}})
+    		return err
+    
+    	}, func(db *mongo.Database) error { //Down
+    		_, err := db.Collection("user").UpdateOne(
+    			context.Background(),
+    			bson.M{"email": "admin@codenation.com.br"},
+    			bson.M{"$set": bson.M{"name": "Admin"}})
+    		return err
+    	})
 }
 ```
 
@@ -66,20 +75,25 @@ import (
 
 * Run migrations.
 ```go
-func MongoConnect(host, user, password, database string) (*mgo.Database, error) {
-    session, err := mgo.DialWithInfo(&mgo.DialInfo{
-        Addrs: []string{host},
-        Database: database,
-        Username: user,
-        Password: password,
-    })
+func MongoConnect(mongoURI, database string) (*mongo.Database, error) {
+    clientOptions := options.Client().ApplyURI(mongoURI).SetMaxPoolSize(10)
+    // Connect to MongoDB
+    ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+    client, err := mongo.Connect(ctx, clientOptions)
+    
     if err != nil {
-        return nil, err
+    	return nil, err
     }
-    db := session.DB("")
+    // Check the connection
+    err = client.Ping(ctx, nil)
+    
+    if err != nil {
+    	return nil, err
+    }
+    db := client.Database(database)
     migrate.SetDatabase(db)
     if err := migrate.Up(migrate.AllAvailable); err != nil {
-        return nil, err
+    	return nil, err
     }
     return db, nil
 }
@@ -88,25 +102,40 @@ func MongoConnect(host, user, password, database string) (*mgo.Database, error) 
 ### Use case #2. Migrations in application code.
 * Just define it anywhere you want and run it.
 ```go
-func MongoConnect(host, user, password, database string) (*mgo.Database, error) {
-    session, err := mgo.DialWithInfo(&mgo.DialInfo{
-        Addrs: []string{host},
-        Database: database,
-        Username: user,
-        Password: password,
-    })
+func MongoConnect(mongoURI, database string) (*mongo.Database, error) {
+    clientOptions := options.Client().ApplyURI(mongoURI).SetMaxPoolSize(10)
+    // Connect to MongoDB
+    ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+    client, err := mongo.Connect(ctx, clientOptions)
+        
     if err != nil {
-        return nil, err
+    	return nil, err
     }
-    db := session.DB("")
+    // Check the connection
+    err = client.Ping(ctx, nil)
+        
+    if err != nil {
+    	return nil, err
+    }
+    db := client.Database(database)
+    
+	
     m := migrate.NewMigrate(db, migrate.Migration{
         Version: 1,
         Description: "add my-index",
         Up: func(db *mgo.Database) error {
-            return db.C("my-coll").EnsureIndex(mgo.Index{Name: "my-index", Key: []string{"my-key"}})
+            _, err := db.Collection("user").UpdateOne(
+                context.Background(),
+                bson.M{"email": "admin@codenation.com.br"},
+                bson.M{"$set": bson.M{"name": "Code:Nation Admin User"}})
+            return err
         },
         Down: func(db *mgo.Database) error {
-            return db.C("my-coll").DropIndexName("my-index")
+            _, err := db.Collection("user").UpdateOne(
+            context.Background(),
+            bson.M{"email": "admin@codenation.com.br"},
+            bson.M{"$set": bson.M{"name": "Admin"}})
+            return err
         },
     })
     if err := m.Up(migrate.AllAvailable); err != nil {

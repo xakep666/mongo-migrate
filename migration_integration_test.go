@@ -3,46 +3,74 @@
 package migrate
 
 import (
+	"context"
 	"errors"
-	"net/url"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/x/bsonx"
 	"os"
-	"strings"
 	"testing"
+	"time"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const testCollection = "test"
 
-func cleanup(db *mgo.Database) {
-	collections, err := db.CollectionNames()
+func cleanup(db *mongo.Database) {
+	cursor, err := db.ListCollections(context.Background(),nil, nil)
 	if err != nil {
 		panic(err)
 	}
-	for _, collection := range collections {
-		db.C(collection).DropAllIndexes()
-		db.C(collection).DropCollection()
+	for cursor.Next(context.Background()) {
+		next := &bsonx.Doc{}
+		err = cursor.Decode(next)
+		if err != nil {
+			panic(err)
+		}
+		elem, err := next.LookupErr("name")
+		if err != nil {
+			panic(err)
+		}
+		elemName := elem.StringValue()
+		_, err = db.Collection(elemName).Indexes().DropAll(context.Background())
+		if err != nil {
+			panic(err)
+		}
+		err = db.Collection(elemName).Drop(context.Background())
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
-var mongo *mgo.Database
+var mongoDB *mongo.Database
 
 func TestMain(m *testing.M) {
-	addr, err := url.Parse(os.Getenv("MONGO_URL"))
-	session, err := mgo.Dial(addr.String())
+	clientOptions := options.Client().ApplyURI(os.Getenv("MONGO_URL")).SetMaxPoolSize(10)
+	// Connect to MongoDB
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	client, err := mongo.Connect(ctx, clientOptions)
+
 	if err != nil {
 		panic(err)
 	}
-	defer session.Close()
-	mongo = session.DB(strings.TrimLeft(addr.Path, "/"))
-	defer cleanup(mongo)
+	// Check the connection
+	err = client.Ping(ctx, nil)
+
+	if err != nil {
+		panic(err)
+	}
+	mongoDB := client.Database(os.Getenv("MONGO_DB"))
+	defer cleanup(mongoDB)
+	defer client.Disconnect(ctx)
 	os.Exit(m.Run())
 }
 
 func TestSetGetVersion(t *testing.T) {
-	defer cleanup(mongo)
-	migrate := NewMigrate(mongo)
+	defer cleanup(mongoDB)
+	migrate := NewMigrate(mongoDB)
 	if err := migrate.SetVersion(1, "hello"); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
@@ -87,8 +115,8 @@ func TestSetGetVersion(t *testing.T) {
 }
 
 func TestVersionBeforeSet(t *testing.T) {
-	defer cleanup(mongo)
-	migrate := NewMigrate(mongo)
+	defer cleanup(mongoDB)
+	migrate := NewMigrate(mongoDB)
 	version, _, err := migrate.Version()
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
@@ -101,13 +129,19 @@ func TestVersionBeforeSet(t *testing.T) {
 }
 
 func TestUpMigrations(t *testing.T) {
-	defer cleanup(mongo)
-	migrate := NewMigrate(mongo,
-		Migration{Version: 1, Description: "hello", Up: func(db *mgo.Database) error {
-			return db.C(testCollection).Insert(bson.M{"hello": "world"})
+	defer cleanup(mongoDB)
+	migrate := NewMigrate(mongoDB,
+		Migration{Version: 1, Description: "hello", Up: func(db *mongo.Database) error {
+			_, err := db.Collection(testCollection).InsertOne(context.Background(),bson.M{"hello": "world"})
+			return err
 		}},
-		Migration{Version: 2, Description: "world", Up: func(db *mgo.Database) error {
-			return db.C(testCollection).EnsureIndex(mgo.Index{Name: "test_idx", Key: []string{"hello"}})
+		Migration{Version: 2, Description: "world", Up: func(db *mongo.Database) error {
+			coll := db.Collection(testCollection)
+			indexView := coll.Indexes()
+			_, err := indexView.CreateOne(context.Background(), mongo.IndexModel{
+				Keys: bsonx.Doc{{"hello", bsonx.String("test_idx")}},
+			})
+			return err
 		}},
 	)
 	if err := migrate.Up(AllAvailable); err != nil {
@@ -124,7 +158,7 @@ func TestUpMigrations(t *testing.T) {
 		return
 	}
 	doc := bson.M{}
-	if err := mongo.C(testCollection).Find(bson.M{"hello": "world"}).One(&doc); err != nil {
+	if err := mongoDB.Collection(testCollection).FindOne(context.Background(),bson.M{"hello": "world"}).Decode(&doc); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
@@ -132,13 +166,25 @@ func TestUpMigrations(t *testing.T) {
 		t.Errorf("Unexpected data")
 		return
 	}
-	indexes, err := mongo.C(testCollection).Indexes()
+	indexes, err := mongoDB.Collection(testCollection).Indexes().List(context.Background())
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
-	for _, index := range indexes {
-		if index.Name == "test_idx" {
+	for indexes.Next(context.Background()) {
+		next := &bsonx.Doc{}
+		err = indexes.Decode(next)
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+			return
+		}
+		elem, err := next.LookupErr("name")
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+			return
+		}
+		elemName := elem.StringValue()
+		if elemName == "test_idx" {
 			return
 		}
 	}
@@ -146,17 +192,27 @@ func TestUpMigrations(t *testing.T) {
 }
 
 func TestDownMigrations(t *testing.T) {
-	defer cleanup(mongo)
-	migrate := NewMigrate(mongo,
-		Migration{Version: 1, Description: "hello", Up: func(db *mgo.Database) error {
-			return db.C(testCollection).Insert(bson.M{"hello": "world"})
-		}, Down: func(db *mgo.Database) error {
-			return db.C(testCollection).Remove(bson.M{"hello": "world"})
+	defer cleanup(mongoDB)
+	migrate := NewMigrate(mongoDB,
+		Migration{Version: 1, Description: "hello", Up: func(db *mongo.Database) error {
+			_, err :=  db.Collection(testCollection).InsertOne(context.Background(), bson.M{"hello": "world"})
+			return err
+		}, Down: func(db *mongo.Database) error {
+			_, err := db.Collection(testCollection).DeleteOne(context.Background(),bson.M{"hello": "world"})
+			return err
 		}},
-		Migration{Version: 2, Description: "world", Up: func(db *mgo.Database) error {
-			return db.C(testCollection).EnsureIndex(mgo.Index{Name: "test_idx", Key: []string{"hello"}})
-		}, Down: func(db *mgo.Database) error {
-			return db.C(testCollection).DropIndexName("test_idx")
+		Migration{Version: 2, Description: "world", Up: func(db *mongo.Database) error {
+			coll := db.Collection(testCollection)
+			indexView := coll.Indexes()
+			_, err := indexView.CreateOne(context.Background(), mongo.IndexModel{
+				Keys: bsonx.Doc{{"hello", bsonx.String("test_idx")}},
+			})
+			return err
+		}, Down: func(db *mongo.Database) error {
+			coll := db.Collection(testCollection)
+			indexView := coll.Indexes()
+			_, err :=indexView.DropOne(context.Background(),"test_idx")
+			return err
 		}},
 	)
 	if err := migrate.Up(AllAvailable); err != nil {
@@ -176,18 +232,30 @@ func TestDownMigrations(t *testing.T) {
 		t.Errorf("Unexpected version: %v", version)
 		return
 	}
-	err = mongo.C(testCollection).Find(bson.M{"hello": "world"}).One(&bson.M{})
-	if err != mgo.ErrNotFound {
+	err = mongoDB.Collection(testCollection).FindOne(context.Background(),bson.M{"hello": "world"}).Decode(&bson.M{})
+	if err != mongo.ErrNoDocuments {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
-	indexes, err := mongo.C(testCollection).Indexes()
+	indexes, err := mongoDB.Collection(testCollection).Indexes().List(context.Background())
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
-	for _, index := range indexes {
-		if index.Name == "test_idx" {
+	for indexes.Next(context.Background()) {
+		next := &bsonx.Doc{}
+		err = indexes.Decode(next)
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+			return
+		}
+		elem, err := next.LookupErr("name")
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+			return
+		}
+		elemName := elem.StringValue()
+		if elemName == "test_idx" {
 			t.Errorf("Index unexpectedly found")
 			return
 		}
@@ -195,16 +263,23 @@ func TestDownMigrations(t *testing.T) {
 }
 
 func TestPartialUpMigrations(t *testing.T) {
-	defer cleanup(mongo)
-	migrate := NewMigrate(mongo,
-		Migration{Version: 1, Description: "hello", Up: func(db *mgo.Database) error {
-			return db.C(testCollection).Insert(bson.M{"hello": "world"})
+	defer cleanup(mongoDB)
+	migrate := NewMigrate(mongoDB,
+		Migration{Version: 1, Description: "hello", Up: func(db *mongo.Database) error {
+			_, err := db.Collection(testCollection).InsertOne(context.Background(),bson.M{"hello": "world"})
+			return err
 		}},
-		Migration{Version: 2, Description: "world", Up: func(db *mgo.Database) error {
-			return db.C(testCollection).EnsureIndex(mgo.Index{Name: "test_idx", Key: []string{"hello"}})
+		Migration{Version: 2, Description: "world", Up: func(db *mongo.Database) error {
+			coll := db.Collection(testCollection)
+			indexView := coll.Indexes()
+			_, err := indexView.CreateOne(context.Background(), mongo.IndexModel{
+				Keys: bsonx.Doc{{"hello", bsonx.String("test_idx")}},
+			})
+			return err
 		}},
-		Migration{Version: 3, Description: "shouldn`t be applied", Up: func(db *mgo.Database) error {
-			return db.C(testCollection).Insert(bson.M{"a": "b"})
+		Migration{Version: 3, Description: "shouldn`t be applied", Up: func(db *mongo.Database) error {
+			_, err := db.Collection(testCollection).InsertOne(context.Background(),bson.M{"a": "b"})
+			return err
 		}},
 	)
 	if err := migrate.Up(2); err != nil {
@@ -221,7 +296,7 @@ func TestPartialUpMigrations(t *testing.T) {
 		return
 	}
 	doc := bson.M{}
-	if err := mongo.C(testCollection).Find(bson.M{"hello": "world"}).One(&doc); err != nil {
+	if err := mongoDB.Collection(testCollection).FindOne(context.Background(),bson.M{"hello": "world"}).Decode(&doc); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
@@ -229,49 +304,74 @@ func TestPartialUpMigrations(t *testing.T) {
 		t.Errorf("Unexpected data")
 		return
 	}
-	indexes, err := mongo.C(testCollection).Indexes()
+	indexes, err := mongoDB.Collection(testCollection).Indexes().List(context.Background())
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
-	for _, index := range indexes {
-		if index.Name == "test_idx" {
+	for indexes.Next(context.Background()) {
+		next := &bsonx.Doc{}
+		err = indexes.Decode(next)
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+			return
+		}
+		elem, err := next.LookupErr("name")
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+			return
+		}
+		elemName := elem.StringValue()
+		if elemName == "test_idx" {
 			goto okIndex
 		}
 	}
 	t.Errorf("Expected index not found")
 okIndex:
-	err = mongo.C(testCollection).Find(bson.M{"a": "b"}).One(&bson.M{})
-	if err != mgo.ErrNotFound {
+	err = mongoDB.Collection(testCollection).FindOne(context.Background(),bson.M{"a": "b"}).Decode(&bson.M{})
+	if err != mongo.ErrNoDocuments {
 		t.Errorf("Unexpectedly found data from non-applied migration")
 		return
 	}
 }
 
 func TestPartialDownMigrations(t *testing.T) {
-	defer cleanup(mongo)
-	migrate := NewMigrate(mongo,
-		Migration{Version: 1, Description: "hello", Up: func(db *mgo.Database) error {
-			return db.C(testCollection).Insert(bson.M{"hello": "world"})
-		}, Down: func(db *mgo.Database) error {
-			return db.C(testCollection).Remove(bson.M{"hello": "world"})
+	defer cleanup(mongoDB)
+	migrate := NewMigrate(mongoDB,
+		Migration{Version: 1, Description: "hello", Up: func(db *mongo.Database) error {
+			_, err := db.Collection(testCollection).InsertOne(context.Background(),bson.M{"hello": "world"})
+			return err
+		}, Down: func(db *mongo.Database) error {
+			_, err := db.Collection(testCollection).DeleteOne(context.Background(),  bson.M{"hello": "world"})
+			return err
 		}},
-		Migration{Version: 2, Description: "world", Up: func(db *mgo.Database) error {
-			return db.C(testCollection).EnsureIndex(mgo.Index{Name: "test_idx", Key: []string{"hello"}})
-		}, Down: func(db *mgo.Database) error {
-			return db.C(testCollection).DropIndexName("test_idx")
+		Migration{Version: 2, Description: "world", Up: func(db *mongo.Database) error {
+			coll := db.Collection(testCollection)
+			indexView := coll.Indexes()
+			_, err := indexView.CreateOne(context.Background(), mongo.IndexModel{
+				Keys: bsonx.Doc{{"hello", bsonx.String("test_idx")}},
+			})
+			return err
+		}, Down: func(db *mongo.Database) error {
+			coll := db.Collection(testCollection)
+			indexView := coll.Indexes()
+			_, err :=indexView.DropOne(context.Background(),"test_idx")
+			return err
+
 		}},
-		Migration{Version: 3, Description: "next", Up: func(db *mgo.Database) error {
-			return db.C(testCollection).Insert(bson.M{"a": "b"})
-		}, Down: func(db *mgo.Database) error {
-			return db.C(testCollection).Remove(bson.M{"a": "b"})
+		Migration{Version: 3, Description: "next", Up: func(db *mongo.Database) error {
+			_, err :=  db.Collection(testCollection).InsertOne(context.Background(), bson.M{"a": "b"})
+			return err
+		}, Down: func(db *mongo.Database) error {
+			_, err := db.Collection(testCollection).DeleteOne(context.Background(), bson.M{"a": "b"})
+			return err
 		}},
 	)
 	if err := migrate.Up(AllAvailable); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
-	err := mongo.C(testCollection).Find(bson.M{"a": "b"}).One(&bson.M{})
+	err := mongoDB.Collection(testCollection).FindOne(context.Background(), bson.M{"a": "b"}).Decode(&bson.M{})
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
@@ -289,18 +389,18 @@ func TestPartialDownMigrations(t *testing.T) {
 		t.Errorf("Unexpected version/description: %v %v", version, description)
 		return
 	}
-	err = mongo.C(testCollection).Find(bson.M{"a": "b"}).One(&bson.M{})
-	if err != mgo.ErrNotFound {
+	err = mongoDB.Collection(testCollection).FindOne(context.Background(), bson.M{"a": "b"}).Decode(&bson.M{})
+	if err != mongo.ErrNoDocuments {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
 }
 
 func TestUpMigrationWithErrors(t *testing.T) {
-	defer cleanup(mongo)
+	defer cleanup(mongoDB)
 	expectedErr := errors.New("normal error")
-	migrate := NewMigrate(mongo,
-		Migration{Version: 1, Description: "hello", Up: func(db *mgo.Database) error {
+	migrate := NewMigrate(mongoDB,
+		Migration{Version: 1, Description: "hello", Up: func(db *mongo.Database) error {
 			return expectedErr
 		}},
 	)
@@ -320,12 +420,13 @@ func TestUpMigrationWithErrors(t *testing.T) {
 }
 
 func TestDownMigrationWithErrors(t *testing.T) {
-	defer cleanup(mongo)
+	defer cleanup(mongoDB)
 	expectedErr := errors.New("normal error")
-	migrate := NewMigrate(mongo,
-		Migration{Version: 1, Description: "hello", Up: func(db *mgo.Database) error {
-			return db.C(testCollection).Insert(bson.M{"hello": "world"})
-		}, Down: func(db *mgo.Database) error {
+	migrate := NewMigrate(mongoDB,
+		Migration{Version: 1, Description: "hello", Up: func(db *mongo.Database) error {
+			_, err := db.Collection(testCollection).InsertOne(context.Background(), bson.M{"hello": "world"})
+			return err
+		}, Down: func(db *mongo.Database) error {
 			return expectedErr
 		}},
 	)
@@ -349,14 +450,14 @@ func TestDownMigrationWithErrors(t *testing.T) {
 }
 
 func TestMultipleUpMigration(t *testing.T) {
-	defer cleanup(mongo)
+	defer cleanup(mongoDB)
 	var cnt int
-	migrate := NewMigrate(mongo,
-		Migration{Version: 1, Description: "hello", Up: func(db *mgo.Database) error {
+	migrate := NewMigrate(mongoDB,
+		Migration{Version: 1, Description: "hello", Up: func(db *mongo.Database) error {
 			cnt++
 			return nil
 		}},
-		Migration{Version: 2, Description: "world", Up: func(db *mgo.Database) error {
+		Migration{Version: 2, Description: "world", Up: func(db *mongo.Database) error {
 			cnt++
 			return nil
 		}},
@@ -385,18 +486,18 @@ func TestMultipleUpMigration(t *testing.T) {
 }
 
 func TestMultipleDownMigration(t *testing.T) {
-	defer cleanup(mongo)
+	defer cleanup(mongoDB)
 	var cnt int
-	migrate := NewMigrate(mongo,
-		Migration{Version: 1, Description: "hello", Up: func(db *mgo.Database) error {
+	migrate := NewMigrate(mongoDB,
+		Migration{Version: 1, Description: "hello", Up: func(db *mongo.Database) error {
 			return nil
-		}, Down: func(db *mgo.Database) error {
+		}, Down: func(db *mongo.Database) error {
 			cnt++
 			return nil
 		}},
-		Migration{Version: 2, Description: "world", Up: func(db *mgo.Database) error {
+		Migration{Version: 2, Description: "world", Up: func(db *mongo.Database) error {
 			return nil
-		}, Down: func(db *mgo.Database) error {
+		}, Down: func(db *mongo.Database) error {
 			cnt++
 			return nil
 		}},

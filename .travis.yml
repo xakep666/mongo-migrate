@@ -5,7 +5,8 @@ go:
 
 env:
   global:
-  - MONGO_URL=mongodb://travis:test@127.0.0.1:27017/mydb_test
+  - MONGO_URL=mongodb://travis:test@127.0.0.1:27017
+  - MONGO_DB=mydb_test
 
 services:
 - mongodb
