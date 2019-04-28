@@ -5,6 +5,7 @@ package migrate
 import (
 	"context"
 	"errors"
+	"fmt"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/x/bsonx"
@@ -18,6 +19,13 @@ import (
 const testCollection = "test"
 
 func cleanup(db *mongo.Database) {
+	fmt.Println(db)
+	fmt.Println(mongoClient)
+	fmt.Println(mongoDB)
+	if db == nil {
+		db = mongoClient.Database(os.Getenv("MONGO_DB"))
+	}
+	fmt.Println(db)
 	cursor, err := db.ListCollections(context.Background(),nil, nil)
 	if err != nil {
 		panic(err)
@@ -45,26 +53,29 @@ func cleanup(db *mongo.Database) {
 }
 
 var mongoDB *mongo.Database
+var mongoClient *mongo.Client
 
 func TestMain(m *testing.M) {
 	clientOptions := options.Client().ApplyURI(os.Getenv("MONGO_URL")).SetMaxPoolSize(10)
 	// Connect to MongoDB
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-	client, err := mongo.Connect(ctx, clientOptions)
+	ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
+	//defer cancel()
+	mongoClient, err := mongo.Connect(ctx, clientOptions)
 
 	if err != nil {
 		panic(err)
 	}
 	// Check the connection
-	err = client.Ping(ctx, nil)
+	err = mongoClient.Ping(ctx, nil)
 
 	if err != nil {
 		panic(err)
 	}
-	mongoDB := client.Database(os.Getenv("MONGO_DB"))
+	mongoDB := mongoClient.Database(os.Getenv("MONGO_DB"))
+	fmt.Println(mongoDB)
+	fmt.Println(mongoClient)
 	defer cleanup(mongoDB)
-	defer client.Disconnect(ctx)
+	//defer client.Disconnect(ctx)
 	os.Exit(m.Run())
 }
 
