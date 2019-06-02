@@ -34,13 +34,14 @@ func internalRegister(up, down MigrationFunc, skip int) error {
 //
 // - Use the following template inside:
 //
-// 	package migrations
-// 	import (
-//	    "go.mongodb.org/mongo-driver/bson"
-//      "go.mongodb.org/mongo-driver/mongo"
-//      "go.mongodb.org/mongo-driver/mongo/options"
-//		"github.com/xakep666/mongo-migrate"
-// 	)
+//  package migrations
+//
+//  import (
+// 	 "go.mongodb.org/mongo-driver/bson"
+// 	 "go.mongodb.org/mongo-driver/mongo"
+// 	 "go.mongodb.org/mongo-driver/mongo/options"
+// 	 "github.com/xakep666/mongo-migrate"
+//  )
 //
 //  func init() {
 // 	 Register(func(db *mongo.Database) error {
