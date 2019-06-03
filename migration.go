@@ -3,12 +3,13 @@ package migrate
 import (
 	"sort"
 
-	"github.com/globalsign/mgo"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type MigrationFunc func(db *mgo.Database) error
+// MigrationFunc used to define actions to be performed for a migration.
+type MigrationFunc func(db *mongo.Database) error
 
-// Migrate represents single database migration.
+// Migration represents single database migration.
 // Migration contains:
 //
 // - version: migration version, must be unique in migration list

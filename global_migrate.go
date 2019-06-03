@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/globalsign/mgo"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var globalMigrate = NewMigrate(nil)
@@ -34,19 +34,33 @@ func internalRegister(up, down MigrationFunc, skip int) error {
 //
 // - Use the following template inside:
 //
-// 	package migrations
-// 	import (
-// 		"github.com/globalsign/mgo"
-//		"github.com/xakep666/mongo-migrate"
-// 	)
+//  package migrations
 //
-// 	func init() {
-//		migrate.Register(func (db *mgo.Database) error {
-//			return db.C(collection).EnsureIndex(index)
-//		}, func (db *mgo.Database) error {
-//			return db.C(collection).DropIndexName(index.Name)
-//		})
-//	 }
+//  import (
+// 	 "go.mongodb.org/mongo-driver/bson"
+// 	 "go.mongodb.org/mongo-driver/mongo"
+// 	 "go.mongodb.org/mongo-driver/mongo/options"
+// 	 "github.com/xakep666/mongo-migrate"
+//  )
+//
+//  func init() {
+// 	 Register(func(db *mongo.Database) error {
+// 	 	 opt := options.Index().SetName("my-index")
+// 	 	 keys := bson.D{{"my-key", 1}}
+// 	 	 model := mongo.IndexModel{Keys: keys, Options: opt}
+// 	 	 _, err := db.Collection("my-coll").Indexes().CreateOne(context.TODO(), model)
+// 	 	 if err != nil {
+// 	 		 return err
+// 	 	 }
+// 	 	 return nil
+// 	 }, func(db *mongo.Database) error {
+// 	 	 _, err := db.Collection("my-coll").Indexes().DropOne(context.TODO(), "my-index")
+// 	 	 if err != nil {
+// 	 		 return err
+// 	 	 }
+// 	 	 return nil
+// 	 })
+//  }
 func Register(up, down MigrationFunc) error {
 	return internalRegister(up, down, 2)
 }
@@ -66,7 +80,7 @@ func RegisteredMigrations() []Migration {
 }
 
 // SetDatabase sets database for global migrate.
-func SetDatabase(db *mgo.Database) {
+func SetDatabase(db *mongo.Database) {
 	globalMigrate.db = db
 }
 
