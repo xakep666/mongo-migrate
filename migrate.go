@@ -3,6 +3,7 @@ package migrate
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -87,9 +88,7 @@ func (m *Migrate) createCollectionIfNotExist(name string) error {
 }
 
 func (m *Migrate) getCollections() (collections []collectionSpecification, err error) {
-	options := options.ListCollections().SetNameOnly(true)
-
-	cursor, err := m.db.ListCollections(context.Background(), bson.D{}, options)
+	cursor, err := m.db.ListCollections(context.Background(), bson.D{})
 	if err != nil {
 		return nil, err
 	}
@@ -140,6 +139,7 @@ func (m *Migrate) Version() (uint64, string, error) {
 	// find record with greatest id (assuming it`s latest also)
 	result := m.db.Collection(m.migrationsCollection).FindOne(context.TODO(), filter, options)
 	if err := result.Err(); err != nil {
+		fmt.Printf("Error while looking up migration records: %s\n", err)
 		return 0, "", err
 	}
 
