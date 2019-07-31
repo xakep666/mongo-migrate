@@ -3,7 +3,6 @@ package migrate
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
