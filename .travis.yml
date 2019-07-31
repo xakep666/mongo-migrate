@@ -14,7 +14,6 @@ services:
 before_script:
 - sleep 15
 - mongo mydb_test --eval 'db.createUser({user:"travis",pwd:"test",roles:["readWrite"]});'
-- mongod -version
 
 script:
 - go test -v -race -coverprofile=coverage.txt -covermode=atomic -tags=integration ./...
