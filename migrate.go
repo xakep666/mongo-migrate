@@ -138,17 +138,16 @@ func (m *Migrate) Version() (uint64, string, error) {
 
 	// find record with greatest id (assuming it`s latest also)
 	result := m.db.Collection(m.migrationsCollection).FindOne(context.TODO(), filter, options)
-	if err := result.Err(); err != nil {
+	err := result.Err()
+	switch {
+	case err == mongo.ErrNoDocuments:
+		return 0, "", nil
+	case err != nil:
 		return 0, "", err
 	}
 
 	var rec versionRecord
-	err := result.Decode(&rec)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return 0, "", nil
-		}
-
+	if err := result.Decode(&rec); err != nil {
 		return 0, "", err
 	}
 

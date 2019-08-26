@@ -70,6 +70,9 @@ func TestMain(m *testing.M) {
 	addr, err := url.Parse(os.Getenv("MONGO_URL"))
 	opt := options.Client().ApplyURI(addr.String())
 	client, err := mongo.NewClient(opt)
+	if err != nil {
+		panic(err)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	err = client.Connect(ctx)
