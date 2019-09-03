@@ -11,6 +11,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// This erorr might be returned when using AWS DocumentDB, as it does not support the 'type' field
+// on db.listCollections(). Checking this error enables a retry without filtering on the 'type'.
+const errDocDbTypeUnsupported = "Field 'type' is currently not supported"
+
 type collectionSpecification struct {
 	Name string `bson:"name"`
 	Type string `bson:"type"`
@@ -91,6 +95,11 @@ func (m *Migrate) getCollections() (collections []collectionSpecification, err e
 	options := options.ListCollections().SetNameOnly(true)
 
 	cursor, err := m.db.ListCollections(context.Background(), filter, options)
+	if err != nil && err.Error() == errDocDbTypeUnsupported {
+		// AWS DocumentDB does not support the field 'type' on listCollections()
+		cursor, err = m.db.ListCollections(context.Background(), bson.D{}, options)
+		// Fallback to the next error check...
+	}
 	if err != nil {
 		return nil, err
 	}
