@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     branches:
-      - main
+      - master
 
 env:
   GIT_USER_EMAIL: ${{ secrets.GIT_EMAIL }}
@@ -24,7 +24,7 @@ jobs:
         with:
           fetch-depth: 0
           token: "${{ secrets.ACCESS_TOKEN }}"
-          ref: "main"
+          ref: "master"
 
       - name: Set up Python 3.8
         uses: actions/setup-python@v1
@@ -48,7 +48,7 @@ jobs:
         with:
           github_token: ${{ secrets.ACCESS_TOKEN }}
           tags: "true"
-          branch: "main"
+          branch: "master"
 
       - name: Print Version
         run: echo "Bumped to version ${{ steps.cz.outputs.version }}"
@@ -64,7 +64,7 @@ jobs:
         with:
           fetch-depth: 0
           token: "${{ secrets.ACCESS_TOKEN }}"
-          ref: "main"
+          ref: "master"
 
       - name: Set up Go
         uses: actions/setup-go@v2
