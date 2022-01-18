@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 package migrate
@@ -25,10 +26,9 @@ type index struct {
 }
 
 func cleanup(db *mongo.Database) {
-	filter := bson.D{bson.E{Key: "type", Value: "collection"}}
 	options := options.ListCollections().SetNameOnly(true)
 
-	cursor, err := db.ListCollections(context.Background(), filter, options)
+	cursor, err := db.ListCollections(context.Background(), bson.D{}, options)
 	if err != nil {
 		panic(err)
 	}
