@@ -1,4 +1,4 @@
-module github.com/xakep666/mongo-migrate
+module github.com/drafteame/mongo-migrate
 
 go 1.17
 

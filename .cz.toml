@@ -1,0 +1,3 @@
+[tool.commitizen]
+version = "0.2.1"
+tag_format = "v$version"
