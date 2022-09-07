@@ -105,3 +105,8 @@ func Up(n int) error {
 func Down(n int) error {
 	return globalMigrate.Down(n)
 }
+
+// SetLogger sets a logger to print the migration process
+func SetLogger(log Logger) {
+	globalMigrate.SetLogger(log)
+}

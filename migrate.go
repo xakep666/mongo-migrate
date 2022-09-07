@@ -36,6 +36,7 @@ type Migrate struct {
 	db                   *mongo.Database
 	migrations           []Migration
 	migrationsCollection string
+	log                  Logger
 }
 
 func NewMigrate(db *mongo.Database, migrations ...Migration) *Migrate {
@@ -195,6 +196,8 @@ func (m *Migrate) Up(n int) error {
 		if err := m.SetVersion(migration.Version, migration.Description); err != nil {
 			return err
 		}
+
+		m.printUp(migration)
 	}
 	return nil
 }
@@ -231,6 +234,29 @@ func (m *Migrate) Down(n int) error {
 		if err := m.SetVersion(prevMigration.Version, prevMigration.Description); err != nil {
 			return err
 		}
+
+		m.printDown(migration)
 	}
 	return nil
+}
+
+// SetLogger sets a logger to print the migration process
+func (m *Migrate) SetLogger(log Logger) {
+	m.log = log
+}
+
+func (m Migrate) printUp(migration Migration) {
+	if m.log == nil {
+		return
+	}
+
+	m.log.Printf("Migrated UP: %d %s", migration.Version, migration.Description)
+}
+
+func (m Migrate) printDown(migration Migration) {
+	if m.log == nil {
+		return
+	}
+
+	m.log.Printf("Migrated DOWN: %d %s", migration.Version, migration.Description)
 }
