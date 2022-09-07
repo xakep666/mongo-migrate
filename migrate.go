@@ -3,6 +3,7 @@ package migrate
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -197,7 +198,7 @@ func (m *Migrate) Up(n int) error {
 			return err
 		}
 
-		m.printUp(migration)
+		m.printUp(migration.Version, migration.Description)
 	}
 	return nil
 }
@@ -235,7 +236,7 @@ func (m *Migrate) Down(n int) error {
 			return err
 		}
 
-		m.printDown(migration)
+		m.printDown(migration.Version, migration.Description)
 	}
 	return nil
 }
@@ -245,18 +246,18 @@ func (m *Migrate) SetLogger(log Logger) {
 	m.log = log
 }
 
-func (m Migrate) printUp(migration Migration) {
-	if m.log == nil {
-		return
-	}
-
-	m.log.Printf("Migrated UP: %d %s", migration.Version, migration.Description)
+func (m Migrate) printUp(migrationVersion uint64, migrationDescription string) {
+	m.print(fmt.Sprintf("Migrated UP: %d %s", migrationVersion, migrationDescription))
 }
 
-func (m Migrate) printDown(migration Migration) {
+func (m Migrate) printDown(migrationVersion uint64, migrationDescription string) {
+	m.print(fmt.Sprintf("Migrated DOWN: %d %s", migrationVersion, migrationDescription))
+}
+
+func (m Migrate) print(msg string) {
 	if m.log == nil {
 		return
 	}
 
-	m.log.Printf("Migrated DOWN: %d %s", migration.Version, migration.Description)
+	m.log.Printf(msg)
 }
