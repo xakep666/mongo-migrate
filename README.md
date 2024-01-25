@@ -48,7 +48,7 @@ import (
 func init() {
 	migrate.Register(func(db *mongo.Database) error {
 		opt := options.Index().SetName("my-index")
-		keys := bson.D{{"my-key", 1}}
+		keys := bson.D{{Key: "my-key", Value: 1}}
 		model := mongo.IndexModel{Keys: keys, Options: opt}
 		_, err := db.Collection("my-coll").Indexes().CreateOne(context.TODO(), model)
 		if err != nil {
@@ -80,18 +80,13 @@ import (
 ```go
 func MongoConnect(host, user, password, database string) (*mongo.Database, error) {
 	uri := fmt.Sprintf("mongodb://%s:%s@%s:27017", user, password, host)
-	opt := options.Client().ApplyURI(uri)
-	client, err := mongo.NewClient(opt)
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	err = client.Connect(ctx)
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
 		return nil, err
 	}
-	db = client.Database(database)
+	db := client.Database(database)
 	migrate.SetDatabase(db)
 	if err := migrate.Up(migrate.AllAvailable); err != nil {
 		return nil, err
