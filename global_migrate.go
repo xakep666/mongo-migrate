@@ -40,13 +40,13 @@ func internalRegister(up, down MigrationFunc, skip int) error {
 // 	 "go.mongodb.org/mongo-driver/bson"
 // 	 "go.mongodb.org/mongo-driver/mongo"
 // 	 "go.mongodb.org/mongo-driver/mongo/options"
-// 	 "github.com/xakep666/mongo-migrate"
+// 	 migrate "github.com/xakep666/mongo-migrate"
 //  )
 //
 //  func init() {
-// 	 Register(func(db *mongo.Database) error {
+// 	 migrate.Register(func(db *mongo.Database) error {
 // 	 	 opt := options.Index().SetName("my-index")
-// 	 	 keys := bson.D{{"my-key", 1}}
+// 	 	 keys := bson.D{{Key: "my-key", Value: 1}}
 // 	 	 model := mongo.IndexModel{Keys: keys, Options: opt}
 // 	 	 _, err := db.Collection("my-coll").Indexes().CreateOne(context.TODO(), model)
 // 	 	 if err != nil {
