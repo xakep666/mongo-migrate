@@ -78,7 +78,6 @@ func (m *Migrate) createCollectionIfNotExist(name string) error {
 	}
 
 	command := bson.D{bson.E{Key: "create", Value: name}}
-	
 	if err = m.db.RunCommand(context.TODO(), command).Err(); err != nil {
 		return err
 	}
