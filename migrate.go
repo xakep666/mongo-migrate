@@ -3,6 +3,7 @@ package migrate
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -36,6 +37,7 @@ type Migrate struct {
 	db                   *mongo.Database
 	migrations           []Migration
 	migrationsCollection string
+	log                  Logger
 }
 
 func NewMigrate(db *mongo.Database, migrations ...Migration) *Migrate {
@@ -194,6 +196,8 @@ func (m *Migrate) Up(n int) error {
 		if err := m.SetVersion(migration.Version, migration.Description); err != nil {
 			return err
 		}
+
+		m.printUp(migration.Version, migration.Description)
 	}
 	return nil
 }
@@ -230,6 +234,29 @@ func (m *Migrate) Down(n int) error {
 		if err := m.SetVersion(prevMigration.Version, prevMigration.Description); err != nil {
 			return err
 		}
+
+		m.printDown(migration.Version, migration.Description)
 	}
 	return nil
+}
+
+// SetLogger sets a logger to print the migration process
+func (m *Migrate) SetLogger(log Logger) {
+	m.log = log
+}
+
+func (m Migrate) printUp(migrationVersion uint64, migrationDescription string) {
+	m.print(fmt.Sprintf("Migrated UP: %d %s", migrationVersion, migrationDescription))
+}
+
+func (m Migrate) printDown(migrationVersion uint64, migrationDescription string) {
+	m.print(fmt.Sprintf("Migrated DOWN: %d %s", migrationVersion, migrationDescription))
+}
+
+func (m Migrate) print(msg string) {
+	if m.log == nil {
+		return
+	}
+
+	m.log.Printf(msg)
 }
