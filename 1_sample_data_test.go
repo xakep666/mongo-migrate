@@ -1,4 +1,4 @@
-// +build integration
+//go:build integration
 
 package migrate
 
@@ -12,14 +12,14 @@ import (
 const globalTestCollection = "test-global"
 
 func init() {
-	Register(func(db *mongo.Database) error {
-		_, err := db.Collection(globalTestCollection).InsertOne(context.TODO(), bson.D{{"a", "b"}})
+	MustRegister(func(ctx context.Context, db *mongo.Database) error {
+		_, err := db.Collection(globalTestCollection).InsertOne(ctx, bson.D{{"a", "b"}})
 		if err != nil {
 			return err
 		}
 		return nil
-	}, func(db *mongo.Database) error {
-		_, err := db.Collection(globalTestCollection).DeleteOne(context.TODO(), bson.D{{"a", "b"}})
+	}, func(ctx context.Context, db *mongo.Database) error {
+		_, err := db.Collection(globalTestCollection).DeleteOne(ctx, bson.D{{"a", "b"}})
 		if err != nil {
 			return err
 		}

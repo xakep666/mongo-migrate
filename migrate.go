@@ -3,9 +3,10 @@ package migrate
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -55,8 +56,8 @@ func (m *Migrate) SetMigrationsCollection(name string) {
 	m.migrationsCollection = name
 }
 
-func (m *Migrate) isCollectionExist(name string) (isExist bool, err error) {
-	collections, err := m.getCollections()
+func (m *Migrate) isCollectionExist(ctx context.Context, name string) (isExist bool, err error) {
+	collections, err := m.getCollections(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -69,8 +70,8 @@ func (m *Migrate) isCollectionExist(name string) (isExist bool, err error) {
 	return false, nil
 }
 
-func (m *Migrate) createCollectionIfNotExist(name string) error {
-	exist, err := m.isCollectionExist(name)
+func (m *Migrate) createCollectionIfNotExist(ctx context.Context, name string) error {
+	exist, err := m.isCollectionExist(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -79,25 +80,25 @@ func (m *Migrate) createCollectionIfNotExist(name string) error {
 	}
 
 	command := bson.D{bson.E{Key: "create", Value: name}}
-	if err = m.db.RunCommand(context.TODO(), command).Err(); err != nil {
+	if err = m.db.RunCommand(ctx, command).Err(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (m *Migrate) getCollections() (collections []collectionSpecification, err error) {
-	cursor, err := m.db.ListCollections(context.Background(), bson.D{})
+func (m *Migrate) getCollections(ctx context.Context) (collections []collectionSpecification, err error) {
+	cursor, err := m.db.ListCollections(ctx, bson.D{})
 	if err != nil {
 		return nil, err
 	}
 
 	if cursor != nil {
 		defer func(cursor *mongo.Cursor) {
-			curErr := cursor.Close(context.TODO())
+			curErr := cursor.Close(ctx)
 			if curErr != nil {
 				if err != nil {
-					err = errors.Wrapf(curErr, "migrate: get collection failed: %s", err.Error())
+					err = fmt.Errorf("migrate: get collection failed: %w", err)
 				} else {
 					err = curErr
 				}
@@ -105,7 +106,7 @@ func (m *Migrate) getCollections() (collections []collectionSpecification, err e
 		}(cursor)
 	}
 
-	for cursor.Next(context.TODO()) {
+	for cursor.Next(ctx) {
 		var collection collectionSpecification
 
 		err := cursor.Decode(&collection)
@@ -126,20 +127,20 @@ func (m *Migrate) getCollections() (collections []collectionSpecification, err e
 }
 
 // Version returns current database version and comment.
-func (m *Migrate) Version() (uint64, string, error) {
-	if err := m.createCollectionIfNotExist(m.migrationsCollection); err != nil {
+func (m *Migrate) Version(ctx context.Context) (uint64, string, error) {
+	if err := m.createCollectionIfNotExist(ctx, m.migrationsCollection); err != nil {
 		return 0, "", err
 	}
 
 	filter := bson.D{{}}
 	sort := bson.D{bson.E{Key: "_id", Value: -1}}
-	options := options.FindOne().SetSort(sort)
+	opts := options.FindOne().SetSort(sort)
 
 	// find record with the greatest id (assuming it`s latest also)
-	result := m.db.Collection(m.migrationsCollection).FindOne(context.TODO(), filter, options)
+	result := m.db.Collection(m.migrationsCollection).FindOne(ctx, filter, opts)
 	err := result.Err()
 	switch {
-	case err == mongo.ErrNoDocuments:
+	case errors.Is(err, mongo.ErrNoDocuments):
 		return 0, "", nil
 	case err != nil:
 		return 0, "", err
@@ -153,15 +154,15 @@ func (m *Migrate) Version() (uint64, string, error) {
 	return rec.Version, rec.Description, nil
 }
 
-// SetVersion forcibly changes database version to provided.
-func (m *Migrate) SetVersion(version uint64, description string) error {
+// SetVersion forcibly changes database version to provided one.
+func (m *Migrate) SetVersion(ctx context.Context, version uint64, description string) error {
 	rec := versionRecord{
 		Version:     version,
 		Timestamp:   time.Now().UTC(),
 		Description: description,
 	}
 
-	_, err := m.db.Collection(m.migrationsCollection).InsertOne(context.TODO(), rec)
+	_, err := m.db.Collection(m.migrationsCollection).InsertOne(ctx, rec)
 	if err != nil {
 		return err
 	}
@@ -172,8 +173,8 @@ func (m *Migrate) SetVersion(version uint64, description string) error {
 // Up performs "up" migrations to latest available version.
 // If n<=0 all "up" migrations with newer versions will be performed.
 // If n>0 only n migrations with newer version will be performed.
-func (m *Migrate) Up(n int) error {
-	currentVersion, _, err := m.Version()
+func (m *Migrate) Up(ctx context.Context, n int) error {
+	currentVersion, _, err := m.Version(ctx)
 	if err != nil {
 		return err
 	}
@@ -188,10 +189,10 @@ func (m *Migrate) Up(n int) error {
 			continue
 		}
 		p++
-		if err := migration.Up(m.db); err != nil {
+		if err := migration.Up(ctx, m.db); err != nil {
 			return err
 		}
-		if err := m.SetVersion(migration.Version, migration.Description); err != nil {
+		if err := m.SetVersion(ctx, migration.Version, migration.Description); err != nil {
 			return err
 		}
 
@@ -203,8 +204,8 @@ func (m *Migrate) Up(n int) error {
 // Down performs "down" migration to the oldest available version.
 // If n<=0 all "down" migrations with older version will be performed.
 // If n>0 only n migrations with older version will be performed.
-func (m *Migrate) Down(n int) error {
-	currentVersion, _, err := m.Version()
+func (m *Migrate) Down(ctx context.Context, n int) error {
+	currentVersion, _, err := m.Version(ctx)
 	if err != nil {
 		return err
 	}
@@ -219,7 +220,7 @@ func (m *Migrate) Down(n int) error {
 			continue
 		}
 		p++
-		if err := migration.Down(m.db); err != nil {
+		if err := migration.Down(ctx, m.db); err != nil {
 			return err
 		}
 
@@ -229,7 +230,7 @@ func (m *Migrate) Down(n int) error {
 		} else {
 			prevMigration = m.migrations[i-1]
 		}
-		if err := m.SetVersion(prevMigration.Version, prevMigration.Description); err != nil {
+		if err := m.SetVersion(ctx, prevMigration.Version, prevMigration.Description); err != nil {
 			return err
 		}
 
