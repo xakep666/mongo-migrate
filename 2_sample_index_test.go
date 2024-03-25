@@ -1,4 +1,4 @@
-// +build integration
+//go:build integration
 
 package migrate
 
@@ -13,17 +13,17 @@ import (
 const globalTestIndexName = "test_idx_2"
 
 func init() {
-	Register(func(db *mongo.Database) error {
+	MustRegister(func(ctx context.Context, db *mongo.Database) error {
 		keys := bson.D{{"a", 1}}
 		opt := options.Index().SetName(globalTestIndexName)
 		model := mongo.IndexModel{Keys: keys, Options: opt}
-		_, err := db.Collection(globalTestCollection).Indexes().CreateOne(context.TODO(), model)
+		_, err := db.Collection(globalTestCollection).Indexes().CreateOne(ctx, model)
 		if err != nil {
 			return err
 		}
 		return nil
-	}, func(db *mongo.Database) error {
-		_, err := db.Collection(globalTestCollection).Indexes().DropOne(context.TODO(), globalTestIndexName)
+	}, func(ctx context.Context, db *mongo.Database) error {
+		_, err := db.Collection(globalTestCollection).Indexes().DropOne(ctx, globalTestIndexName)
 		if err != nil {
 			return err
 		}

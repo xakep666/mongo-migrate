@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"context"
 	"testing"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -35,9 +36,9 @@ func TestMigrationsRegistration(t *testing.T) {
 	}()
 	globalMigrate = NewMigrate(nil)
 
-	err := Register(func(db *mongo.Database) error {
+	err := Register(func(ctx context.Context, db *mongo.Database) error {
 		return nil
-	}, func(db *mongo.Database) error {
+	}, func(ctx context.Context, db *mongo.Database) error {
 		return nil
 	})
 	if err != nil {
@@ -53,9 +54,9 @@ func TestMigrationsRegistration(t *testing.T) {
 		t.Errorf("Unexpected version/description: %d %s", registered[0].Version, registered[0].Description)
 	}
 
-	err = Register(func(db *mongo.Database) error {
+	err = Register(func(ctx context.Context, db *mongo.Database) error {
 		return nil
-	}, func(db *mongo.Database) error {
+	}, func(ctx context.Context, db *mongo.Database) error {
 		return nil
 	})
 	if err == nil {
@@ -72,9 +73,9 @@ func TestMigrationMustRegistration(t *testing.T) {
 		}
 	}()
 	globalMigrate = NewMigrate(nil)
-	MustRegister(func(db *mongo.Database) error {
+	MustRegister(func(ctx context.Context, db *mongo.Database) error {
 		return nil
-	}, func(db *mongo.Database) error {
+	}, func(ctx context.Context, db *mongo.Database) error {
 		return nil
 	})
 	registered := RegisteredMigrations()

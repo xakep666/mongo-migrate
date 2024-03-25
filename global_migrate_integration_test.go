@@ -1,20 +1,22 @@
-// +build integration
+//go:build integration
 
 package migrate
 
 import (
+	"context"
 	"testing"
 )
 
 func TestGlobalMigrateUp(t *testing.T) {
 	defer cleanup(db)
 	SetDatabase(db)
+	ctx := context.Background()
 
-	if err := Up(-1); err != nil {
+	if err := Up(ctx, -1); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
-	version, description, err := Version()
+	version, description, err := Version(ctx)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
@@ -28,16 +30,17 @@ func TestGlobalMigrateUp(t *testing.T) {
 func TestGlobalMigrateDown(t *testing.T) {
 	defer cleanup(db)
 	SetDatabase(db)
+	ctx := context.Background()
 
-	if err := Up(-1); err != nil {
+	if err := Up(ctx, -1); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
-	if err := Down(-1); err != nil {
+	if err := Down(ctx, -1); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
-	version, _, err := Version()
+	version, _, err := Version(ctx)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
