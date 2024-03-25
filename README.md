@@ -102,13 +102,9 @@ func MongoConnect(host, user, password, database string) (*mongo.Database, error
 func MongoConnect(host, user, password, database string) (*mongo.Database, error) {
 	uri := fmt.Sprintf("mongodb://%s:%s@%s:27017", user, password, host)
 	opt := options.Client().ApplyURI(uri)
-	client, err := mongo.NewClient(opt)
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	err = client.Connect(ctx)
+	err = mongo.Connect(ctx, opt)
 	if err != nil {
 		return nil, err
 	}

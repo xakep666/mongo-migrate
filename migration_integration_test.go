@@ -26,9 +26,9 @@ type index struct {
 
 func cleanup(db *mongo.Database) {
 	ctx := context.Background()
-	options := options.ListCollections().SetNameOnly(true)
+	opts := options.ListCollections().SetNameOnly(true)
 
-	cursor, err := db.ListCollections(ctx, bson.D{}, options)
+	cursor, err := db.ListCollections(ctx, bson.D{}, opts)
 	if err != nil {
 		panic(err)
 	}
@@ -69,13 +69,9 @@ var db *mongo.Database
 func TestMain(m *testing.M) {
 	addr, err := url.Parse(os.Getenv("MONGO_URL"))
 	opt := options.Client().ApplyURI(addr.String())
-	client, err := mongo.NewClient(opt)
-	if err != nil {
-		panic(err)
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	err = client.Connect(ctx)
+	client, err := mongo.Connect(ctx, opt)
 	if err != nil {
 		panic(err)
 	}
@@ -188,12 +184,12 @@ func TestUpMigrations(t *testing.T) {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
-	doc := bson.D{}
+	doc := bson.M{}
 	if err := result.Decode(&doc); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
-	if doc.Map()["hello"].(string) != "world" {
+	if doc["hello"].(string) != "world" {
 		t.Errorf("Unexpected data")
 		return
 	}
@@ -368,13 +364,13 @@ func TestPartialUpMigrations(t *testing.T) {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
-	var doc bson.D
+	var doc bson.M
 	err = result.Decode(&doc)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
 	}
-	if doc.Map()["hello"].(string) != "world" {
+	if doc["hello"].(string) != "world" {
 		t.Errorf("Unexpected data")
 		return
 	}
