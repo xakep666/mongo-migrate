@@ -1,5 +1,5 @@
 # Versioned migrations for MongoDB
-[![Build Status](https://travis-ci.org/xakep666/mongo-migrate.svg?branch=master)](https://travis-ci.org/xakep666/mongo-migrate)
+[![Build Status](https://github.com/xakep666/mongo-migrate/actions/workflows/testing.yml/badge.svg)](https://travis-ci.org/xakep666/mongo-migrate)
 [![codecov](https://codecov.io/gh/xakep666/mongo-migrate/branch/master/graph/badge.svg)](https://codecov.io/gh/xakep666/mongo-migrate)
 [![Go Report Card](https://goreportcard.com/badge/github.com/xakep666/mongo-migrate)](https://goreportcard.com/report/github.com/xakep666/mongo-migrate)
 [![GoDoc](https://godoc.org/github.com/xakep666/mongo-migrate?status.svg)](https://godoc.org/github.com/xakep666/mongo-migrate)
