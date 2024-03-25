@@ -243,18 +243,18 @@ func (m *Migrate) SetLogger(log Logger) {
 	m.log = log
 }
 
-func (m Migrate) printUp(migrationVersion uint64, migrationDescription string) {
-	m.print(fmt.Sprintf("Migrated UP: %d %s", migrationVersion, migrationDescription))
+func (m *Migrate) printUp(migrationVersion uint64, migrationDescription string) {
+	m.printf("Migrated UP: %d %s", migrationVersion, migrationDescription)
 }
 
-func (m Migrate) printDown(migrationVersion uint64, migrationDescription string) {
-	m.print(fmt.Sprintf("Migrated DOWN: %d %s", migrationVersion, migrationDescription))
+func (m *Migrate) printDown(migrationVersion uint64, migrationDescription string) {
+	m.printf("Migrated DOWN: %d %s", migrationVersion, migrationDescription)
 }
 
-func (m Migrate) print(msg string) {
+func (m *Migrate) printf(msg string, args ...any) {
 	if m.log == nil {
 		return
 	}
 
-	m.log.Printf(msg)
+	m.log.Printf(msg, args...)
 }
