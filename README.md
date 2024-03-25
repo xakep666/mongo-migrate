@@ -20,7 +20,7 @@ Table of Contents
 * [License](#license)
 
 ## Prerequisites
-* Golang >= 1.10 or Vgo
+* Golang >= 1.22
 
 ## Installation
 ```bash

@@ -50,7 +50,7 @@ func NewMigrate(db *mongo.Database, migrations ...Migration) *Migrate {
 }
 
 // SetMigrationsCollection replaces name of collection for storing migration information.
-// By default it is "migrations".
+// By default, it is "migrations".
 func (m *Migrate) SetMigrationsCollection(name string) {
 	m.migrationsCollection = name
 }
@@ -135,7 +135,7 @@ func (m *Migrate) Version() (uint64, string, error) {
 	sort := bson.D{bson.E{Key: "_id", Value: -1}}
 	options := options.FindOne().SetSort(sort)
 
-	// find record with greatest id (assuming it`s latest also)
+	// find record with the greatest id (assuming it`s latest also)
 	result := m.db.Collection(m.migrationsCollection).FindOne(context.TODO(), filter, options)
 	err := result.Err()
 	switch {
@@ -200,7 +200,7 @@ func (m *Migrate) Up(n int) error {
 	return nil
 }
 
-// Down performs "down" migration to oldest available version.
+// Down performs "down" migration to the oldest available version.
 // If n<=0 all "down" migrations with older version will be performed.
 // If n>0 only n migrations with older version will be performed.
 func (m *Migrate) Down(n int) error {
