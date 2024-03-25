@@ -9,6 +9,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        mongodb-version: [ '4.4', '5.0', '6.0' ]
+
     steps:
       - uses: actions/checkout@v4
 
@@ -20,8 +24,15 @@ jobs:
       - name: Download dependencies
         run: go mod download -x
 
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.10.0
+        with:
+          mongodb-version: ${{ matrix.mongodb-version }}
+
       - name: Test
-        run: go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+        env:
+          MONGO_URL: mongodb://localhost:27017/testing
+        run: go test -race -tags integration -coverprofile=coverage.txt -covermode=atomic ./...
 
       - uses: codecov/codecov-action@v3
         with:
