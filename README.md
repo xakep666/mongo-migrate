@@ -54,7 +54,6 @@ func init() {
 		if err != nil {
 			return err
 		}
-
 		return nil
 	}, func(db *mongo.Database) error {
 		_, err := db.Collection("my-coll").Indexes().DropOne(context.TODO(), "my-index")
