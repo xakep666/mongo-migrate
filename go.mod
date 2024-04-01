@@ -1,6 +1,6 @@
 module github.com/xakep666/mongo-migrate
 
-go 1.22
+go 1.20
 
 require go.mongodb.org/mongo-driver v1.14.0
 
