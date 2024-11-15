@@ -9,11 +9,10 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 const testCollection = "test"
@@ -53,7 +52,7 @@ func cleanup(db *mongo.Database) {
 	}
 
 	for _, collection := range collections {
-		_, err := db.Collection(collection.Name).Indexes().DropAll(ctx)
+		err := db.Collection(collection.Name).Indexes().DropAll(ctx)
 		if err != nil {
 			panic(err)
 		}
@@ -68,10 +67,11 @@ var db *mongo.Database
 
 func TestMain(m *testing.M) {
 	addr, err := url.Parse(os.Getenv("MONGO_URL"))
+	if err != nil {
+		panic(err)
+	}
 	opt := options.Client().ApplyURI(addr.String())
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-	client, err := mongo.Connect(ctx, opt)
+	client, err := mongo.Connect(opt)
 	if err != nil {
 		panic(err)
 	}
@@ -255,7 +255,7 @@ func TestDownMigrations(t *testing.T) {
 
 			return nil
 		}, Down: func(ctx context.Context, db *mongo.Database) error {
-			_, err := db.Collection(testCollection).Indexes().DropOne(ctx, "test_idx")
+			err := db.Collection(testCollection).Indexes().DropOne(ctx, "test_idx")
 			if err != nil {
 				return err
 			}
@@ -440,7 +440,7 @@ func TestPartialDownMigrations(t *testing.T) {
 			}
 			return err
 		}, Down: func(ctx context.Context, db *mongo.Database) error {
-			_, err := db.Collection(testCollection).Indexes().DropOne(ctx, "test_idx")
+			err := db.Collection(testCollection).Indexes().DropOne(ctx, "test_idx")
 			if err != nil {
 				return err
 			}

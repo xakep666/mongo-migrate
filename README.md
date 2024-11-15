@@ -41,9 +41,9 @@ package migrations
 import (
   "context"
 
-  "go.mongodb.org/mongo-driver/bson"
-  "go.mongodb.org/mongo-driver/mongo"
-  "go.mongodb.org/mongo-driver/mongo/options"
+  "go.mongodb.org/mongo-driver/v2/bson"
+  "go.mongodb.org/mongo-driver/v2/mongo"
+  "go.mongodb.org/mongo-driver/v2/mongo/options"
   migrate "github.com/xakep666/mongo-migrate"
 )
 
@@ -58,7 +58,7 @@ func init() {
     }
     return nil
   }, func(ctx context.Context, db *mongo.Database) error {
-    _, err := db.Collection("my-coll").Indexes().DropOne(ctx, "my-index")
+    err := db.Collection("my-coll").Indexes().DropOne(ctx, "my-index")
     if err != nil {
       return err
     }
@@ -81,9 +81,8 @@ import (
 ```go
 func MongoConnect(host, user, password, database string) (*mongo.Database, error) {
 	uri := fmt.Sprintf("mongodb://%s:%s@%s:27017", user, password, host)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
+	opt := options.Client().ApplyURI(addr.String())
+	client, err := mongo.Connect(opt)
 	if err != nil {
 		return nil, err
 	}
@@ -102,9 +101,7 @@ func MongoConnect(host, user, password, database string) (*mongo.Database, error
 func MongoConnect(host, user, password, database string) (*mongo.Database, error) {
 	uri := fmt.Sprintf("mongodb://%s:%s@%s:27017", user, password, host)
 	opt := options.Client().ApplyURI(uri)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-	err = mongo.Connect(ctx, opt)
+	err = mongo.Connect(opt)
 	if err != nil {
 		return nil, err
 	}

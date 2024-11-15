@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 var globalMigrate = NewMigrate(nil)
@@ -38,24 +38,24 @@ func internalRegister(up, down MigrationFunc, skip int) error {
 //	 package migrations
 //
 //	 import (
-//		 "go.mongodb.org/mongo-driver/bson"
-//		 "go.mongodb.org/mongo-driver/mongo"
-//		 "go.mongodb.org/mongo-driver/mongo/options"
+//		 "go.mongodb.org/mongo-driver/v2/bson"
+//		 "go.mongodb.org/mongo-driver/v2/mongo"
+//		 "go.mongodb.org/mongo-driver/v2/mongo/options"
 //		 migrate "github.com/xakep666/mongo-migrate"
 //	 )
 //
 //	 func init() {
-//		 migrate.Register(func(db *mongo.Database) error {
+//		 migrate.Register(func(ctx context.Context, db *mongo.Database) error {
 //		 	 opt := options.Index().SetName("my-index")
 //		 	 keys := bson.D{{Key: "my-key", Value: 1}}
 //		 	 model := mongo.IndexModel{Keys: keys, Options: opt}
-//		 	 _, err := db.Collection("my-coll").Indexes().CreateOne(context.TODO(), model)
+//		 	 _, err := db.Collection("my-coll").Indexes().CreateOne(ctx, model)
 //		 	 if err != nil {
 //		 		 return err
 //		 	 }
 //		 	 return nil
 //		 }, func(db *mongo.Database) error {
-//		 	 _, err := db.Collection("my-coll").Indexes().DropOne(context.TODO(), "my-index")
+//		 	 _, err := db.Collection("my-coll").Indexes().DropOne(ctx, "my-index")
 //		 	 if err != nil {
 //		 		 return err
 //		 	 }

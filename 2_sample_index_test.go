@@ -5,9 +5,9 @@ package migrate
 import (
 	"context"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 const globalTestIndexName = "test_idx_2"
@@ -23,7 +23,7 @@ func init() {
 		}
 		return nil
 	}, func(ctx context.Context, db *mongo.Database) error {
-		_, err := db.Collection(globalTestCollection).Indexes().DropOne(ctx, globalTestIndexName)
+		err := db.Collection(globalTestCollection).Indexes().DropOne(ctx, globalTestIndexName)
 		if err != nil {
 			return err
 		}
