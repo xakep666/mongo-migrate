@@ -4,7 +4,7 @@ import (
 	"context"
 	"sort"
 
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 // MigrationFunc used to define actions to be performed for a migration.
